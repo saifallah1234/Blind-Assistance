@@ -1,0 +1,26 @@
+[
+    {
+        "id": 1,
+        "object_type": "person",
+        "distance_m": null,
+        "alert": "non"
+    },
+    {
+        "id": 2,
+        "object_type": "person",
+        "distance_m": null,
+        "alert": "non"
+    },
+    {
+        "id": 3,
+        "object_type": "person",
+        "distance_m": null,
+        "alert": "non"
+    },
+    {
+        "id": 4,
+        "object_type": "person",
+        "distance_m": null,
+        "alert": "non"
+    }
+]
