@@ -1,3 +1,5 @@
+import base64
+from sqlite3 import Binary
 from db.mongo_connection import get_mongo_db
 from datetime import datetime
 import json
@@ -34,19 +36,35 @@ def insert_yolo_frame(file, json_str):
     
     return str(result.inserted_id)
 
-def get_latest_frames(limit=5):
+def get_latest_frames(limit=1):
     """
-    Retrieves the latest frames (without binary data to keep it fast).
+    Retrieves the latest frames and converts binary image data to Base64 strings.
     """
     db = get_mongo_db()
     collection = db["frames"]
     
-    # Fetch latest 5, but EXCLUDE the heavy 'image_data' field for preview
-    cursor = collection.find({}, {"image_data": 0}).sort("created_at", -1).limit(limit)
+    # Get all fields (no exclusion)
+    cursor = collection.find({}).sort("created_at", -1).limit(limit)
     
     results = []
     for doc in cursor:
-        doc["_id"] = str(doc["_id"]) # Convert ObjectId to string
+        # 1. Convert ObjectId to string
+        doc["_id"] = str(doc["_id"]) 
+        
+        # 2. Convert 'created_at' to string (if it's a datetime object)
+        if "created_at" in doc:
+            doc["created_at"] = str(doc["created_at"])
+
+        # 3. CRITICAL FIX: Convert Image Bytes to Base64 String
+        if "image_data" in doc:
+            image_data = doc["image_data"]
+            
+            # If stored as BSON Binary or raw bytes, convert to base64 string
+            if isinstance(image_data, (bytes, Binary)):
+                # Encode bytes to base64 bytes, then decode to utf-8 string
+                encoded_str = base64.b64encode(image_data).decode('utf-8')
+                doc["image_data"] = encoded_str
+        
         results.append(doc)
         
     return results

@@ -9,8 +9,7 @@ psycopg2-binary==2.9.9
 
 # ---- Streamlit Dashboard ----
 streamlit==1.39.0
-streamlit-autorefresh==0.2.0
-
+streamlit-autorefresh==1.0.1
 # ---- Data Processing ----
 pandas==2.2.2
 
