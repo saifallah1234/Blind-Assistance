@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 # FIX: 'depth_service' instead of 'depth_servie'
-from services.depth_servie import insert_depth_result 
+from services.depth_servie import insert_depth_result, get_latest_depth_result
 
 depth_bp = Blueprint('depth_bp', __name__)
 
@@ -28,4 +28,28 @@ def upload_depth_result():
 
     except Exception as e:
         print(f"Error in upload_depth_result: {e}")
+        return jsonify({"error": str(e)}), 500
+    
+@depth_bp.route("/get_latest_depth_result", methods=["GET"])
+def get_latest_result():
+    try:
+        # 1. Call the service function to get the document
+        result = get_latest_depth_result()
+        
+        # 2. Handle case where database is empty
+        if not result:
+            return jsonify({
+                "status": "success",
+                "message": "No depth data found in the database",
+                "data": None
+            }), 404
+
+        # 3. Return the data
+        return jsonify({
+            "status": "success", 
+            "data": result
+        }), 200
+
+    except Exception as e:
+        print(f"Error in get_latest_result: {e}")
         return jsonify({"error": str(e)}), 500

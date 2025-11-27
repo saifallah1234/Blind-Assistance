@@ -3,8 +3,8 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
-from api_client import get_latest, get_all
-
+from api_client import get_latest, get_all,get_depth_lates
+import base64
 
 # ---------------------- PAGE CONFIG ----------------------
 st.set_page_config(
@@ -201,31 +201,76 @@ st.markdown("<br>", unsafe_allow_html=True)
 col_left, col_right = st.columns([2, 1])
 
 # ---- Left Column: Camera Feed ----
-with col_left:
-    st.subheader("🎥 Live Environment View")
+response = get_depth_lates()
+latest_data = response.get("data")
+if latest_data:
+    
+    # --- LEFT COLUMN: IMAGE DISPLAY ---
+    with col_left:
+        st.subheader("📷 Environment View")
 
-    with st.container():
-        st.markdown('<div class="camera-container">', unsafe_allow_html=True)
-        st.image("C:/Users/User/Desktop/CI2/iot/iot_blind_dashboard/person_detection_with_depth_roi.jpg", 
-                 use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        with st.container():
+            st.markdown('<div class="camera-container">', unsafe_allow_html=True)
+            
+            # Decode the Base64 string to bytes
+            try:
+                image_data = base64.b64decode(latest_data['image'])
+                st.image(image_data, use_container_width=True)
+            except Exception as e:
+                st.error(f"Error loading image: {e}")
+                
+            st.markdown('</div>', unsafe_allow_html=True)
 
-    st.caption(f"🕒 Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        # Use the timestamp from the database, or fallback to now
+        time_display = latest_data.get('created_at', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        st.caption(f"🕒 Last updated: {time_display}")
 
-# ---- Right Column: Alerts & Navigation ----
-with col_right:
-    st.subheader("🚨 Immediate Alerts")
+    # --- RIGHT COLUMN: OBJECT ALERTS ---
+    with col_right:
+        st.subheader("🚨 Immediate Alerts")
+        
+        objects = latest_data.get("objects", [])
 
-    for obj in detected_objects:
-        alert_class = f"alert-{obj['Alert'].lower()}"
-        st.markdown(f"""
-        <div class="alert-box {alert_class}">
-            ⚠️ {obj['Object']} - {obj['Distance']}<br>
-            <small>Priority: {obj['Priority']}</small>
-        </div>
-        """, unsafe_allow_html=True)
+        if not objects:
+            st.info("✅ No obstacles detected.")
+        else:
+            for obj in objects:
+                # Extract data
+                obj_name = obj.get("class", "Unknown")
+                distance = obj.get("distance", 0.0)
 
-    st.markdown("<br>", unsafe_allow_html=True)
+                # LOGIC: Determine Priority/Color based on Distance
+                # < 1 meter = High (Red), < 2 meters = Medium (Orange), else Low (Green/Blue)
+                if distance < 1.0:
+                    priority = "CRITICAL"
+                    alert_class = "alert-high" # Ensure you have this class in your CSS
+                    icon = "⛔"
+                elif distance < 2.5:
+                    priority = "WARNING"
+                    alert_class = "alert-medium"
+                    icon = "⚠️"
+                else:
+                    priority = "INFO"
+                    alert_class = "alert-low"
+                    icon = "ℹ️"
+
+                # Render the Alert Box
+                st.markdown(f"""
+                <div class="alert-box {alert_class}" style="padding: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ddd;">
+                    <strong>{icon} {obj_name.upper()}</strong>
+                    <br>
+                    <span style="font-size: 1.2em; font-weight: bold;">{distance} meters</span>
+                    <br>
+                    <small>Priority: {priority}</small>
+                </div>
+                """, unsafe_allow_html=True)
+
+else:
+    # Handle case where API is down or DB is empty
+    with col_left:
+        st.warning("Waiting for data...")
+    with col_right:
+        st.caption("No alerts available.")
 
     st.subheader("🧭 Navigation Guide")
 

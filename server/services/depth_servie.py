@@ -41,3 +41,38 @@ def insert_depth_result(data):
     result = collection.insert_one(document)
     
     return str(result.inserted_id)
+
+def get_latest_depth_result():
+    """
+    Retrieves the most recently added document from the 'depth' collection.
+    Converts binary image data back to a Base64 string for JSON serialization.
+    """
+    db = get_mongo_db()
+    collection = db["depth"]
+
+    # 1. Find the latest document
+    # Sort by 'created_at' in descending order (-1) to get the newest first
+    latest_doc = collection.find_one(sort=[("created_at", -1)])
+
+    if not latest_doc:
+        return None
+
+    # 2. Process the document for output
+    
+    # Convert ObjectId to string (JSON serializable)
+    latest_doc["_id"] = str(latest_doc["_id"])
+
+    # Convert Binary image data back to Base64 string
+    if "image_data" in latest_doc and latest_doc["image_data"]:
+        try:
+            # Encode binary -> base64 bytes -> utf-8 string
+            b64_bytes = base64.b64encode(latest_doc["image_data"])
+            latest_doc["image"] = b64_bytes.decode('utf-8')
+            
+            # Optional: Remove the raw binary field to make the dict JSON serializable
+            del latest_doc["image_data"]
+        except Exception as e:
+            print(f"Error encoding image to base64: {e}")
+            latest_doc["image"] = None
+
+    return latest_doc

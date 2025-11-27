@@ -13,3 +13,8 @@ def get_all(limit=200):
         return requests.get(f"{API_URL}/sensor/all?limit={limit}").json()
     except Exception as e:
         return []
+def get_depth_lates():
+    try:
+        return requests.get(f"{API_URL}/depth/get_latest_depth_result").json()
+    except Exception as e:
+        return{"error": str(e)}
