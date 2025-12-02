@@ -75,17 +75,35 @@ else:
     # NOTE: You will need to update your 'analyze_scene' function to accept 
     # a PIL Image object instead of a file path (and potentially use detections_data)
     try:
-        data = analyze_scene(
-            original_image,
-            detections_data,
-            d_model, 
-            d_processor, 
-            device
-        )
-        print(data)
-        if data.get("objects"):
+        while True:
+            data = analyze_scene(
+                original_image,
+                detections_data,
+                d_model, 
+                d_processor, 
+                device
+            )
+            # if data.get("objects"):
+            #     print(f"🚀 Sending {len(data['objects'])} objects to backend...")
+                
+            #     try:
+            #         response = requests.post(
+            #             "http://127.0.0.1:5000/api/depth/upload_depth_result", 
+            #             json=data,
+            #             timeout=5
+            #         )
+                    
+            #         if response.status_code == 200:
+            #             print(f"✅ Saved to DB with ID: {response.json().get('id')}")
+            #         else:
+            #             print(f"❌ Server Error {response.status_code}: {response.text}")
+
+            #     except Exception as e:
+            #         print(f"❌ Connection Failed: {e}")
+            # else:
+            #     print("Skipping upload (no objects detected).")
             print(f"🚀 Sending {len(data['objects'])} objects to backend...")
-            
+                
             try:
                 response = requests.post(
                     "http://127.0.0.1:5000/api/depth/upload_depth_result", 
@@ -100,25 +118,23 @@ else:
 
             except Exception as e:
                 print(f"❌ Connection Failed: {e}")
-        else:
-            print("Skipping upload (no objects detected).")
+            original_image, detections_data = get_image_from_api(API_URL)
+            time.sleep(1)
+            # # 4. Show Results (as before)
+            # plt.figure(figsize=(15, 5))
+            
+            # plt.subplot(1, 2, 1)
+            # plt.title("Original (from API)")
+            # plt.imshow(original_image)
+            # plt.axis('off')
 
-        
-        # # 4. Show Results (as before)
-        # plt.figure(figsize=(15, 5))
-        
-        # plt.subplot(1, 2, 1)
-        # plt.title("Original (from API)")
-        # plt.imshow(original_image)
-        # plt.axis('off')
-
-        # plt.subplot(1, 2, 2)
-        # plt.title("Detections & Distances")
-        # plt.imshow(result_img)
-        # plt.axis('off')
-        
-        # plt.tight_layout()
-        # plt.show()
+            # plt.subplot(1, 2, 2)
+            # plt.title("Detections & Distances")
+            # plt.imshow(result_img)
+            # plt.axis('off')
+            
+            # plt.tight_layout()
+            # plt.show()
         
     except Exception as e:
         print(f"Error during scene analysis: {e}")

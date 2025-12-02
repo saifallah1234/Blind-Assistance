@@ -475,8 +475,10 @@ def analyze_scene(input_image, detections_data, depth_model, depth_processor, de
     
     # 3. Get Depth Map
     print("Estimating Depth...")
-    depth_map, d_time = estimate_depth_from_model(pil_image, depth_model, depth_processor, device)
-    
+    if(detections_data):
+        depth_map, d_time = estimate_depth_from_model(pil_image, depth_model, depth_processor, device)
+    else:
+        print("------- No Objects ----------")
     # --- 4. Process Pre-saved Detections ---
     print("Processing Pre-saved Detections...")
 

@@ -1,9 +1,9 @@
 import psycopg2
 def get_db_connection():
     return psycopg2.connect(
-        dbname="iot",
+        dbname="esp",
         user="postgres",
-        password="saif12",
+        password="admin",
         host="localhost",
         port=5432
     )

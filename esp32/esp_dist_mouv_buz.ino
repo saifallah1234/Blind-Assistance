@@ -8,8 +8,8 @@
 #define BUZZER_PIN 19
 
 // ---- WIFI ----
-const char* ssid = "Ooredoo 5G_86561B_5G";
-const char* password = "6P2PGS7ZH2";
+const char* ssid = "Lamiros's iPhone";
+const char* password = "informatique204";
 
 // ---- API URL ----
 String serverUrl = "http://192.168.1.194:5000/api/sensor";

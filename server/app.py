@@ -15,4 +15,4 @@ app.register_blueprint(depth_bp, url_prefix="/api/depth")
 if __name__ == "__main__":
     # HOST 0.0.0.0 is critical for the Pi to connect
     print("🚀 MongoDB API running on http://0.0.0.0:5000")
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)

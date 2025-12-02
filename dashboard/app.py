@@ -1,9 +1,8 @@
-"""Dashboard for Blind Assistance IoT System"""
 import streamlit as st
 import pandas as pd
 from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
-from api_client import get_latest, get_all,get_depth_lates
+from api_client import get_latest, get_depth_lates
 import base64
 
 # ---------------------- PAGE CONFIG ----------------------
@@ -16,316 +15,214 @@ st.set_page_config(
 # ---------------------- CUSTOM CSS ----------------------
 st.markdown("""
 <style>
-    .main-header {
-        font-size: 3rem;
-        color: #1f77b4;
-        text-align: center;
-        margin-bottom: 2rem;
-        font-weight: 700;
-    }
+    .main-header { font-size: 3rem; color: #1f77b4; text-align: center; margin-bottom: 2rem; font-weight: 700; }
+    
+    /* Metric Card Styles */
     .metric-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem;
-        border-radius: 15px;
-        color: white;
+        padding: 1rem; border-radius: 15px; color: white;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); height: 150px;
+        display: flex; flex-direction: column; justify-content: center;
+    }
+    .metric-card h3 { font-size: 1rem; margin: 0 0 8px 0; font-weight: 600; }
+    .metric-card h2 { font-size: 2rem; margin: 0 0 5px 0; font-weight: 700; }
+    .metric-card p { font-size: 0.85rem; margin: 0; opacity: 0.9; }
+
+    /* Status Styles */
+    .status-moving { background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%); }
+    .status-stopped { background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%); }
+    
+    .status-card {
+        padding: 1rem; border-radius: 15px; color: white; text-align: center;
+        height: 150px; display: flex; flex-direction: column; justify-content: center;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        height: 150px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        overflow: hidden;
     }
-    .metric-card h3 {
-        font-size: 1rem;
-        margin: 0 0 8px 0;
-        font-weight: 600;
-    }
-    .metric-card h2 {
-        font-size: 2rem;
-        margin: 0 0 5px 0;
-        font-weight: 700;
-    }
-    .metric-card p {
-        font-size: 0.85rem;
-        margin: 0;
-        opacity: 0.9;
-    }
-    .status-moving {
-        background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
-        padding: 1rem;
-        border-radius: 15px;
-        color: white;
-        text-align: center;
-        height: 150px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-    }
-    .status-stopped {
-        background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
-        padding: 1rem;
-        border-radius: 15px;
-        color: white;
-        text-align: center;
-        height: 150px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-    }
-    .status-moving h3, .status-stopped h3 {
-        font-size: 1rem;
-        margin: 0 0 8px 0;
-        font-weight: 600;
-    }
-    .status-moving h2, .status-stopped h2 {
-        font-size: 1.8rem;
-        margin: 0;
-        font-weight: 700;
-    }
-    .alert-box {
-        padding: 1rem;
-        border-radius: 10px;
-        margin: 0.5rem 0;
-        font-weight: bold;
-    }
-    .alert-red { background-color: #ffebee; color: #c62828; border-left: 5px solid #c62828; }
-    .alert-yellow { background-color: #fffde7; color: #f9a825; border-left: 5px solid #f9a825; }
-    .alert-green { background-color: #e8f5e8; color: #2e7d32; border-left: 5px solid #2e7d32; }
-    .camera-container {
-        border-radius: 15px;
-        overflow: hidden;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        margin-bottom: 1rem;
-    }
-    .quick-actions-row {
-        margin-top: 2rem;
-        margin-bottom: 1rem;
-    }
+    .status-card h2 { font-size: 1.8rem; margin: 0; font-weight: 700; }
+
+    /* Alert Styles */
+    .alert-box { padding: 1rem; border-radius: 10px; margin: 0.5rem 0; color: #333; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .alert-high { background-color: #ffebee; border-left: 5px solid #c62828; }
+    .alert-medium { background-color: #fffde7; border-left: 5px solid #f9a825; }
+    .alert-low { background-color: #e8f5e8; border-left: 5px solid #2e7d32; }
+    
+    .camera-container { border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); margin-bottom: 1rem; }
 </style>
 """, unsafe_allow_html=True)
+
+# ---------------------- AUTO REFRESH (5 SECONDS) ----------------------
+# This line triggers the rerun every 5000 milliseconds (5 seconds)
+st_autorefresh(interval=5000, key="data_refresh")
 
 # ---------------------- HEADER ----------------------
 st.markdown('<div class="main-header">👁️‍🦯 Blind Assistance IoT Dashboard</div>', unsafe_allow_html=True)
 
-# ---------------------- REAL SENSOR DATA ----------------------
-latest = get_latest()
+# ---------------------- DATA FETCHING ----------------------
+# 1. Fetch Basic Sensors (Ultrasonic, IR, Gyro)
+sensor_data = get_latest()
 
-if "error" in latest:
-    st.error("❌ Could not fetch real data from server.")
-    st.stop()
+# 2. Fetch AI Camera Data (Image + Object Detection List)
+ai_data = get_depth_lates()
 
-distance = latest["distance"]     # cm
-movement = latest["movement"]     # 1 or 0
-buzzer = latest["buzzer"]         # 1 or 0
-
-is_moving = movement == 1
-battery_level = 90  # placeholder for future battery sensor
-
-# ---------------------- DYNAMIC ALERT LOGIC ----------------------
+# Initialize variables with defaults (prevent crash if server is down)
+server_online = False
+distance_val = 0.0
+is_moving = False
+buzzer_active = False
+battery_level = 88 # Placeholder default
+camera_image = None
 detected_objects = []
+last_updated_time = datetime.now().strftime('%H:%M:%S')
 
-if distance < 50:
-    detected_objects.append({
-        "Object": "Obstacle detected",
-        "Distance": f"{distance:.0f} cm",
-        "Alert": "Red",
-        "Priority": "High"
-    })
-elif distance < 100:
-    detected_objects.append({
-        "Object": "Object ahead",
-        "Distance": f"{distance:.0f} cm",
-        "Alert": "Yellow",
-        "Priority": "Medium"
-    })
-else:
-    detected_objects.append({
-        "Object": "Clear path",
-        "Distance": f"{distance:.0f} cm",
-        "Alert": "Green",
-        "Priority": "Low"
-    })
+# Process Sensor Data
+if sensor_data and "error" not in sensor_data:
+    server_online = True
+    distance_val = float(sensor_data.get("distance", 0))
+    movement_val = int(sensor_data.get("movement", 0))
+    buzzer_val = int(sensor_data.get("buzzer", 0))
+    
+    is_moving = (movement_val == 1)
+    buzzer_active = (buzzer_val == 1)
 
-# ---------------------- IMAGE REFRESH LOGIC ----------------------
-refresh_interval = 60000 if is_moving else 600000
-st_autorefresh(interval=refresh_interval, key="image_refresh")
+# Process AI/Camera Data
+if ai_data and "data" in ai_data:
+    inner_data = ai_data["data"]
+    detected_objects = inner_data.get("objects", [])
+    
+    # Handle Image
+    b64_img = inner_data.get("image", "")
+    if b64_img:
+        try:
+            camera_image = base64.b64decode(b64_img)
+        except:
+            camera_image = None
+    
+    # Handle Timestamp
+    db_time = inner_data.get("created_at")
+    if db_time:
+        last_updated_time = db_time
 
-# ---------------------- TOP METRICS ROW ----------------------
+# ---------------------- METRICS ROW ----------------------
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     st.markdown(f"""
     <div class="metric-card">
-        <h3>📏 Distance</h3>
-        <h2>{distance:.1f} cm</h2>
-        <p>Ultrasonic sensor reading</p>
+        <h3>📏 Obstacle Distance</h3>
+        <h2>{distance_val:.1f} cm</h2>
+        <p>Ultrasonic Sensor</p>
     </div>
     """, unsafe_allow_html=True)
 
 with col2:
-    status_icon = "🎯" if is_moving else "🛑"
-    status_text = "MOVING" if is_moving else "STOPPED"
-    status_class = "status-moving" if is_moving else "status-stopped"
+    status_icon = "🏃" if is_moving else "🧍"
+    status_text = "MOVING" if is_moving else "IDLE"
+    bg_class = "status-moving" if is_moving else "status-stopped"
+    
     st.markdown(f"""
-    <div class="{status_class}">
-        <h3>{status_icon} Status</h3>
+    <div class="status-card {bg_class}">
+        <h3>{status_icon} User Status</h3>
         <h2>{status_text}</h2>
     </div>
     """, unsafe_allow_html=True)
 
 with col3:
+    # Logic: If buzzer is 1, system is alerting the blind user
+    alert_status = "⚠️ Vibrating" if buzzer_active else "✅ Silent"
     st.markdown(f"""
     <div class="metric-card">
-        <h3>🔋 Battery</h3>
-        <h2>{battery_level}%</h2>
-        <p>Good condition</p>
+        <h3>🔔 Feedback System</h3>
+        <h2>{alert_status}</h2>
+        <p>Haptic/Audio State</p>
     </div>
     """, unsafe_allow_html=True)
 
 with col4:
+    conn_color = "#4caf50" if server_online else "#f44336"
+    conn_text = "Connected" if server_online else "Offline"
     st.markdown(f"""
-    <div class="metric-card">
-        <h3>📡 Connection</h3>
-        <h2>{'Stable' if buzzer == 0 else 'Alert Active'}</h2>
-        <p>Sensor network online</p>
+    <div class="metric-card" style="background: {conn_color};">
+        <h3>📡 Server Status</h3>
+        <h2>{conn_text}</h2>
+        <p>Last Sync: {last_updated_time}</p>
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown("<br>", unsafe_allow_html=True)
+st.markdown("---")
 
-# ---------------------- MAIN CONTENT LAYOUT ----------------------
-col_left, col_right = st.columns([2, 1])
+# ---------------------- MAIN DISPLAY ----------------------
+left_col, right_col = st.columns([2, 1])
 
-# ---- Left Column: Camera Feed ----
-response = get_depth_lates()
-latest_data = response.get("data")
-if latest_data:
+# --- LEFT: CAMERA FEED ---
+with left_col:
+    st.subheader("📷 Live Depth Analysis")
+    st.markdown('<div class="camera-container">', unsafe_allow_html=True)
     
-    # --- LEFT COLUMN: IMAGE DISPLAY ---
-    with col_left:
-        st.subheader("📷 Environment View")
+    if camera_image:
+        st.image(camera_image, use_container_width=True)
+    else:
+        # Placeholder if no image available
+        st.warning("Waiting for camera stream...")
+        st.markdown("""
+        <div style="height:400px; background-color:#f0f2f6; display:flex; align-items:center; justify-content:center; color:#888;">
+            <h2>📵 No Video Feed</h2>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    st.markdown('</div>', unsafe_allow_html=True)
 
-        with st.container():
-            st.markdown('<div class="camera-container">', unsafe_allow_html=True)
+# --- RIGHT: DYNAMIC ALERTS (FROM SERVER) ---
+with right_col:
+    st.subheader("🚨 Detected Objects")
+    
+    if not server_online:
+        st.error("Server unavailable. Cannot fetch alerts.")
+    elif not detected_objects:
+        st.success("✅ Path is clear")
+        st.caption("No identifiable objects in range.")
+    else:
+        # Iterate over the objects returned by get_depth_lates()
+        for obj in detected_objects:
+            # Safely get values with defaults
+            label = obj.get("class", "Unknown Object").upper()
+            depth = float(obj.get("distance", 0.0))
             
-            # Decode the Base64 string to bytes
-            try:
-                image_data = base64.b64decode(latest_data['image'])
-                st.image(image_data, use_container_width=True)
-            except Exception as e:
-                st.error(f"Error loading image: {e}")
-                
-            st.markdown('</div>', unsafe_allow_html=True)
+            # Determine Alert Severity based on Depth
+            if depth < 0.8: # Very close (less than 80cm)
+                severity_class = "alert-high"
+                icon = "⛔"
+                msg = "CRITICAL STOP"
+            elif depth < 2.0: # Moderate distance
+                severity_class = "alert-medium"
+                icon = "⚠️"
+                msg = "Caution Ahead"
+            else: # Far away
+                severity_class = "alert-low"
+                icon = "ℹ️"
+                msg = "Detected"
 
-        # Use the timestamp from the database, or fallback to now
-        time_display = latest_data.get('created_at', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        st.caption(f"🕒 Last updated: {time_display}")
-
-    # --- RIGHT COLUMN: OBJECT ALERTS ---
-    with col_right:
-        st.subheader("🚨 Immediate Alerts")
-        
-        objects = latest_data.get("objects", [])
-
-        if not objects:
-            st.info("✅ No obstacles detected.")
-        else:
-            for obj in objects:
-                # Extract data
-                obj_name = obj.get("class", "Unknown")
-                distance = obj.get("distance", 0.0)
-
-                # LOGIC: Determine Priority/Color based on Distance
-                # < 1 meter = High (Red), < 2 meters = Medium (Orange), else Low (Green/Blue)
-                if distance < 1.0:
-                    priority = "CRITICAL"
-                    alert_class = "alert-high" # Ensure you have this class in your CSS
-                    icon = "⛔"
-                elif distance < 2.5:
-                    priority = "WARNING"
-                    alert_class = "alert-medium"
-                    icon = "⚠️"
-                else:
-                    priority = "INFO"
-                    alert_class = "alert-low"
-                    icon = "ℹ️"
-
-                # Render the Alert Box
-                st.markdown(f"""
-                <div class="alert-box {alert_class}" style="padding: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ddd;">
-                    <strong>{icon} {obj_name.upper()}</strong>
-                    <br>
-                    <span style="font-size: 1.2em; font-weight: bold;">{distance} meters</span>
-                    <br>
-                    <small>Priority: {priority}</small>
+            st.markdown(f"""
+            <div class="alert-box {severity_class}">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:1.1rem; font-weight:bold;">{icon} {label}</span>
+                    <span style="font-size:0.9rem; background:rgba(255,255,255,0.5); padding:2px 6px; border-radius:4px;">{depth:.2f} m</span>
                 </div>
-                """, unsafe_allow_html=True)
+                <div style="margin-top:5px; font-size:0.85rem;">{msg}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-else:
-    # Handle case where API is down or DB is empty
-    with col_left:
-        st.warning("Waiting for data...")
-    with col_right:
-        st.caption("No alerts available.")
-
-    st.subheader("🧭 Navigation Guide")
-
-    with st.expander("Current Route Information", expanded=True):
-        st.info("""
-        *Current Path:* Clear  
-        *Next Turn:* Right in 50 m  
-        *Destination:* 200 m ahead  
-        
-        🎧 Audio guidance active
-        """)
-
-# ---------------------- QUICK ACTIONS ROW ----------------------
-st.markdown('<div class="quick-actions-row">', unsafe_allow_html=True)
-st.subheader("⚡ Quick Actions")
-
-a1, a2, a3, a4 = st.columns(4)
-
-with a1:
-    if st.button("🔄 Refresh Data", use_container_width=True):
-        st.rerun()
-
-with a2:
-    if st.button("🔊 Repeat Guidance", use_container_width=True):
-        st.success("Guidance repeated via audio")
-
-with a3:
-    if st.button("🆘 Emergency", use_container_width=True):
-        st.error("Emergency alert sent to contacts!")
-
-with a4:
-    if st.button("📞 Call Assistant", use_container_width=True):
-        st.info("Connecting to assistant...")
-
-st.markdown('</div>', unsafe_allow_html=True)
-
-# ---------------------- BOTTOM STATUS BAR ----------------------
+# ---------------------- FOOTER / ACTIONS ----------------------
 st.markdown("---")
-bottom_col1, bottom_col2, bottom_col3 = st.columns([1, 2, 1])
+st.markdown("#### ⚡ System Controls")
+b1, b2, b3, b4 = st.columns(4)
 
-with bottom_col1:
-    st.markdown("*System Status:* ✅ All systems operational")
+if b1.button("Force Reload", use_container_width=True):
+    st.rerun()
+    
+if b2.button("Test Alarm", use_container_width=True):
+    st.toast("Testing local buzzer...", icon="🔔")
+    
+if b3.button("Toggle Night Mode", use_container_width=True):
+    st.info("Switching camera mode...")
 
-with bottom_col2:
-    refresh_text = "1 min" if is_moving else "10 min"
-    st.markdown(f"*Auto-refresh:* Every {refresh_text} | *Last full scan:* 30 seconds ago")
-
-with bottom_col3:
-    st.markdown("*👁️‍🦯 Assistive Tech v2.1***")
-
-# ---------------------- FOOTER ----------------------
-st.markdown("---")
-st.markdown(
-    "<div style='text-align: center; color: #666;'>"
-    "© 2025 Blind Assistance IoT Project | Making navigation accessible for everyone"
-    "</div>", 
-    unsafe_allow_html=True
-)
+if b4.button("Emergency Call", use_container_width=True):
+    st.error("Sending Emergency Alert...")
