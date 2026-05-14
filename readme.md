@@ -325,8 +325,3 @@ The Streamlit dashboard provides:
 - **[PyTorch Image Models (timm)](https://github.com/huggingface/pytorch-image-models)** — ViT backbone used within DepthPro
 - **[DINOv2](https://github.com/facebookresearch/dinov2)** — Self-supervised vision features powering the depth encoder
 
----
-
-<p align="center">
-  Built with ❤️ to make the world more accessible.
-</p>
